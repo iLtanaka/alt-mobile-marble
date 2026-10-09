@@ -1,0 +1,6 @@
+*.tar.*
+*.img
+*.img.zst
+build-rootfs/
+out/
+*.log
