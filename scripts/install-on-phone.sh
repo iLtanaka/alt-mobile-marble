@@ -37,6 +37,20 @@ PARTUUID=$(blkid -s PARTUUID -o value "$DEV") || die "no PARTUUID on $DEV"
 ESPUUID=$(blkid -s UUID -o value $ESP) || die "no UUID on the esp"
 KVER=$(uname -r)
 
+# Wi-Fi: ath11k can report a zero MAC, so profiles get a fixed locally
+# administered one. WIFI_MAC overrides; otherwise one is derived from this
+# phone's machine-id so it is stable and differs between devices.
+if [ -z "${WIFI_MAC:-}" ]; then
+	h=$(md5sum </etc/machine-id | cut -c1-10)
+	WIFI_MAC=$(echo "02$h" | sed 's/../&:/g; s/:$//')
+fi
+
+# Login password: random unless MP_PASS is set (sshd is enabled on the target).
+if [ -z "${MP_PASS:-}" ]; then
+	MP_PASS=$(tr -dc 'a-z0-9' </dev/urandom | head -c 10)
+	GENERATED_PASS=1
+fi
+
 command -v mkfs.btrfs >/dev/null || die "mkfs.btrfs is missing; install btrfs-progs (apk add btrfs-progs)"
 [ -r /boot/vmlinuz ] || die "no /boot/vmlinuz: is this a postmarketOS installation?"
 [ -r /boot/sm8475-xiaomi-marble.dtb ] || die "no marble DTB in /boot"
@@ -144,7 +158,8 @@ if [ -d /etc/NetworkManager/system-connections ]; then
 		t="$M/etc/NetworkManager/system-connections/$(basename "$c")"
 		# interface names differ (wlan0 vs wlp1s0); ath11k can report a zero MAC
 		sed -e '/^interface-name=/d' \
-		    -e '/^\[wifi\]/a cloned-mac-address=00:03:7F:12:07:A3' "$c" > "$t"
+		    -e '/^cloned-mac-address=/d' \
+		    -e "/^\\[wifi\\]/a cloned-mac-address=$WIFI_MAC" "$c" > "$t"
 		chmod 600 "$t"
 	done
 fi
@@ -162,7 +177,7 @@ cp "$(dirname "$0")/setup-target.sh" "$M/tmp/setup-target.sh"
 chmod 755 "$M/tmp/setup-target.sh"
 chroot "$M" /usr/bin/env -i HOME=/root TERM=dumb LANG=C.UTF-8 \
 	PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-	MP_USER="${MP_USER:-alt}" MP_PASS="${MP_PASS:-alt}" \
+	MP_USER="${MP_USER:-alt}" MP_PASS="$MP_PASS" \
 	MP_TOUCHBOOST="${TOUCHBOOST:-}" \
 	sh /tmp/setup-target.sh
 rm -f "$M/tmp/setup-target.sh"
@@ -178,6 +193,7 @@ fi
 
 sync
 say "done: ALT Mobile is installed on $DEV"
+say "login: ${MP_USER:-alt} / $MP_PASS${GENERATED_PASS:+  (generated, change it after the first login)}"
 cat <<'EOF'
 
 Reboot, hold Volume Down while U-Boot starts, and pick

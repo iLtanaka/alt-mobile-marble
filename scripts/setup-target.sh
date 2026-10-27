@@ -5,7 +5,7 @@
 set -eu
 
 USER_NAME=${MP_USER:-alt}
-USER_PASS=${MP_PASS:-alt}
+USER_PASS=${MP_PASS:?MP_PASS is required}
 
 echo "[+] SSH server and sudo"
 apt-get update -q

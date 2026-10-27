@@ -105,7 +105,7 @@ The script:
 * copies `/lib/modules/$(uname -r)`, all firmware into `/usr/lib/firmware/updates/` and the sensor registry into `/usr/share/qcom`;
 * runs the target setup in a chroot: SSH server, sudo, login user, masked units, enabled marble units.
 
-`MP_USER` and `MP_PASS` override the login user (default `alt`/`alt`), and
+`MP_USER` and `MP_PASS` set the login user (default user `alt`; without `MP_PASS` a random password is generated and printed at the end), `WIFI_MAC` overrides the cloned Wi-Fi MAC (default: derived from the phone's machine-id), and
 `TOUCHBOOST=/path/to/static/marble-touchboost` installs a static build of the
 touch daemon (postmarketOS ships a musl binary that ALT cannot run).
 
